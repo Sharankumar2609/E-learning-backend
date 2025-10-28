@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------- STUDENTS -------------------
+model Student {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  password     String
+  photo        String?
+  enrollments  Enrollment[]
+  quizAttempts UserQuiz[]
+  videoProgress UserVideo[]
+}
+
+// ------------------- TEACHERS -------------------
+model Teacher {
+  id       Int      @id @default(autoincrement())
+  name     String
+  email    String   @unique
+  password String
+  photo    String?
+  courses  Course[]
+}
+
+// ------------------- COURSES -------------------
+model Course {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  imageUrl    String?
+  quizzes     Quiz[]
+  videos      Video[]
+  notes       Note[]
+  enrollments Enrollment[]
+  // owner
+  teacher     Teacher   @relation(fields: [teacherId], references: [id])
+  teacherId   Int
+}
+
+// ------------------- STUDENT-COURSE ENROLLMENT -------------------
+model Enrollment {
+  id         Int      @id @default(autoincrement())
+  student    Student  @relation(fields: [studentId], references: [id])
+  studentId  Int
+  course     Course   @relation(fields: [courseId], references: [id])
+  courseId   Int
+  enrolledAt DateTime @default(now())
+  @@unique([studentId, courseId])
+}
+
+// ------------------- QUIZZES -------------------
+model Quiz {
+  id         Int       @id @default(autoincrement())
+  course     Course    @relation(fields: [courseId], references: [id])
+  courseId   Int
+  title      String
+  totalMarks Int?
+  timeLimit  Int?      // minutes
+  questions  Question[]
+  attempts   UserQuiz[]
+  createdAt  DateTime  @default(now())
+}
+
+// ------------------- QUESTIONS -------------------
+model Question {
+  id        Int       @id @default(autoincrement())
+  quiz      Quiz      @relation(fields: [quizId], references: [id])
+  quizId    Int
+  text      String
+  marks     Int
+  answers   Answer[]
+  createdAt DateTime @default(now())
+}
+
+// ------------------- ANSWERS -------------------
+model Answer {
+  id         Int      @id @default(autoincrement())
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId Int
+  text       String
+  isCorrect  Boolean
+}
+
+// ------------------- STUDENT QUIZ ATTEMPTS -------------------
+model UserQuiz {
+  id         Int       @id @default(autoincrement())
+  student    Student   @relation(fields: [studentId], references: [id])
+  studentId  Int
+  quiz       Quiz      @relation(fields: [quizId], references: [id])
+  quizId     Int
+  status     String    @default("Pending") // Pending / Completed
+  score      Int       @default(0)
+  answers    String?   // JSON string of student answers
+  timeSpent  Int?      // seconds
+  startedAt  DateTime?
+  finishedAt DateTime?
+  timeTaken  Int?      // minutes (legacy field)
+  createdAt  DateTime  @default(now())
+  @@unique([studentId, quizId])
+}
+
+// ------------------- VIDEOS -------------------
+model Video {
+  id        Int       @id @default(autoincrement())
+  course    Course    @relation(fields: [courseId], references: [id])
+  courseId  Int
+  title     String
+  url       String
+  createdAt DateTime  @default(now())
+  progress  UserVideo[]
+}
+
+// ------------------- STUDENT VIDEO PROGRESS -------------------
+model UserVideo {
+  id        Int       @id @default(autoincrement())
+  student   Student   @relation(fields: [studentId], references: [id])
+  studentId Int
+  video     Video     @relation(fields: [videoId], references: [id])
+  videoId   Int
+  status    String    @default("Pending") // Pending / Watched
+  watchedAt DateTime?
+  @@unique([studentId, videoId])
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  Int
+  title     String
+  url       String
+  type      String
+  createdAt DateTime @default(now())
+}
